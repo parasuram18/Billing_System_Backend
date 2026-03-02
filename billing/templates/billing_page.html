@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Billing Page</title>
+    <style>
+        body { font-family: Arial; margin: 30px; }
+        .section { margin-bottom: 30px; }
+        .product-row { margin-bottom: 10px; }
+        hr { margin: 25px 0; }
+        table { border-collapse: collapse; }
+        td, th { padding: 8px 12px; }
+        input { padding: 6px; margin-right: 10px; }
+        button { padding: 6px 10px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<h2>Billing Page</h2>
+
+<form id="billingForm">
+
+    {% csrf_token %}
+
+    <!-- CUSTOMER INFO -->
+
+    <div class="section">
+        <h3>Customer Information</h3>
+        <input type="email" name="customer_email" placeholder="Customer Email" required>
+    </div>
+
+    <div class="section">
+        <button type="button" onclick="loadInvoices()">View Previous Purchases</button>
+    </div>
+
+    <div id="invoiceList"></div>
+    <div id="invoiceDetails"></div>
+
+    <hr>
+
+    <!-- PRODUCTS -->
+
+    <div class="section">
+        <h3>Products Purchased</h3>
+
+        <div id="productsContainer">
+            <div class="product-row">
+                <input type="text" name="product_id[]" placeholder="Product ID" required>
+                <input type="number" name="quantity[]" placeholder="Quantity" min="1" required>
+                <button type="button" onclick="removeRow(this)">Remove</button>
+            </div>
+        </div>
+
+        <button type="button" onclick="addProductRow()">Add New</button>
+    </div>
+
+    <hr>
+
+    <!-- DENOMINATIONS -->
+
+    <div class="section">
+        <h3>Denominations</h3>
+
+        <table border="1">
+            <tr>
+                {% for denom in denominations %}
+                    <th>{{ denom.value }}</th>
+                {% endfor %}
+            </tr>
+            <tr>
+                {% for denom in denominations %}
+                    <td>
+                        <input type="number"
+                               name="denomination_{{ denom.value }}"
+                               min="0"
+                               value="{{ denom.available_count }}">
+                    </td>
+                {% endfor %}
+            </tr>
+        </table>
+    </div>
+
+    <!-- PAID AMOUNT -->
+
+    <div class="section">
+        <h3>Cash Paid</h3>
+        <input type="number" step="0.01" name="paid_amount" placeholder="Paid Amount" required>
+    </div>
+
+    <!-- SUBMIT -->
+
+    <div class="section">
+        <button type="submit">Generate Bill</button>
+    </div>
+
+</form>
+
+<div id="invoiceContainer"></div>
+
+<script>
+
+function addProductRow() {
+    const container = document.getElementById("productsContainer");
+
+    const newRow = document.createElement("div");
+    newRow.classList.add("product-row");
+
+    newRow.innerHTML = `
+        <input type="text" name="product_id[]" placeholder="Product ID" required>
+        <input type="number" name="quantity[]" placeholder="Quantity" min="1" required>
+        <button type="button" onclick="removeRow(this)">Remove</button>
+    `;
+
+    container.appendChild(newRow);
+}
+
+function removeRow(button) {
+    button.parentElement.remove();
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== "") {
+        const cookies = document.cookie.split(";");
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + "=")) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+document.getElementById("billingForm").addEventListener("submit", function(e) {
+    e.preventDefault();
+
+    const products = [];
+    const productIds = document.getElementsByName("product_id[]");
+    const quantities = document.getElementsByName("quantity[]");
+
+    for (let i = 0; i < productIds.length; i++) {
+        products.push({
+            product_id: productIds[i].value,
+            quantity: parseInt(quantities[i].value)
+        });
+    }
+
+    fetch("/api/create/invoice/", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": getCookie("csrftoken")
+        },
+        body: JSON.stringify({
+            customer_email: document.querySelector("[name=customer_email]").value,
+            products: products,
+            paid_amount: parseFloat(document.querySelector("[name=paid_amount]").value)
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(err => { throw err });
+        }
+        return response.json();
+    })
+    .then(data => renderInvoice(data))
+    .catch(error => {
+        console.log(error)
+        alert("Error: " + JSON.stringify(error.message));
+    });
+
+});
+
+function renderInvoice(data) {
+
+    let html = `
+        <h2>Invoice</h2>
+        <p><strong>Email:</strong> ${data.customer_email}</p>
+
+        <table border="1">
+            <tr>
+                <th>Product ID</th>
+                <th>Unit Price</th>
+                <th>Qty</th>
+                <th>Purchase Price</th>
+                <th>Tax %</th>
+                <th>Tax Payable</th>
+                <th>Total</th>
+            </tr>
+    `;
+
+    data.items.forEach(item => {
+        html += `
+            <tr>
+                <td>${item.product_name}</td>
+                <td>${item.unit_price}</td>
+                <td>${item.quantity}</td>
+                <td>${item.purchase_price}</td>
+                <td>${item.tax_percent}</td>
+                <td>${item.tax_payable}</td>
+                <td>${item.total_price}</td>
+            </tr>
+        `;
+    });
+
+    html += `
+        </table>
+        <p><strong>Total without tax:</strong> ${data.total_without_tax}</p>
+        <p><strong>Total tax:</strong> ${data.total_tax}</p>
+        <p><strong>Net price:</strong> ${data.net_price}</p>
+        <p><strong>Rounded net price:</strong> ${data.rounded_net_price}</p>
+        <p><strong>Balance to customer:</strong> ${data.balance_amount}</p>
+        <h3>Balance Denominations:</h3>
+    `;
+
+    for (let key in data.denominations) {
+        html += `<p>${key} : ${data.denominations[key]}</p>`;
+    }
+
+    document.getElementById("invoiceContainer").innerHTML = html;
+}
+
+function loadInvoices() {
+
+    const email = document.querySelector("[name=customer_email]").value;
+
+    if (!email) {
+        alert("Enter customer email first");
+        return;
+    }
+
+    fetch(`/api/customer/invoices/?email=${email}`)
+        .then(res => res.json())
+        .then(data => {
+
+            let html = "<h3>Previous Purchases</h3>";
+
+            if (data.length === 0) {
+                html += "<p>No invoices found</p>";
+            } else {
+                data.forEach(invoice => {
+                    html += `
+                        <p>
+                            <button onclick="showInvoiceDetails(${invoice.id})">
+                                Invoice #${invoice.id} - ${invoice.purchased_at}
+                            </button>
+                        </p>
+                    `;
+                });
+            }
+
+            document.getElementById("invoiceList").innerHTML = html;
+        });
+}
+
+function showInvoiceDetails(invoiceId) {
+
+    fetch(`/api/invoice/${invoiceId}/`)
+        .then(res => res.json())
+        .then(invoice => {
+
+            let html = `
+                <h3>Invoice #${invoice.id}</h3>
+                <p>Total: ${invoice.total_amount}</p>
+                <p>Paid: ${invoice.paid_amount}</p>
+                <p>Balance: ${invoice.balance_amount}</p>
+                <p>Purchased At: ${invoice.purchased_at}</p>
+
+                <table border="1">
+                    <tr>
+                        <th>Product</th>
+                        <th>Quantity</th>
+                        <th>Price</th>
+                        <th>Tax %</th>
+                        <th>Total</th>
+                    </tr>
+            `;
+
+            invoice.items.forEach(item => {
+                html += `
+                    <tr>
+                        <td>${item.product_name}</td>
+                        <td>${item.quantity}</td>
+                        <td>${item.price}</td>
+                        <td>${item.tax_percentage}</td>
+                        <td>${item.total_price}</td>
+                    </tr>
+                `;
+            });
+
+            html += "</table>";
+
+            document.getElementById("invoiceDetails").innerHTML = html;
+        });
+}
+
+</script>
+
+</body>
+</html>

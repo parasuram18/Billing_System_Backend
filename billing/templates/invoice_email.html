@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        table {
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #000;
+            padding: 6px 10px;
+            text-align: center;
+        }
+        .no-border td {
+            border: none;
+            padding: 4px 0;
+        }
+    </style>
+</head>
+<body>
+
+<h2 style="text-align:center;">Billing Invoice</h2>
+
+<p><strong>Customer Email:</strong> {{ customer_email }}</p>
+<p><strong>Invoice ID:</strong> {{ invoice_id }}</p>
+
+<!-- PRODUCT TABLE -->
+
+<table width="100%" border="1">
+    <tr>
+        <th>Product ID</th>
+        <th>Unit Price</th>
+        <th>Quantity</th>
+        <th>Purchase Price</th>
+        <th>Tax %</th>
+        <th>Tax Payable</th>
+        <th>Total</th>
+    </tr>
+
+    {% for item in product_details %}
+    <tr>
+        <td>{{ item.product_name }}</td>
+        <td>{{ item.unit_price|floatformat:2 }}</td>
+        <td>{{ item.quantity }}</td>
+        <td>{{ item.purchase_price|floatformat:2 }}</td>
+        <td>{{ item.tax_percent }}</td>
+        <td>{{ item.tax_payable|floatformat:2 }}</td>
+        <td>{{ item.total_price|floatformat:2 }}</td>
+    </tr>
+    {% endfor %}
+</table>
+
+<br>
+
+<!-- RIGHT SIDE SUMMARY -->
+
+<table width="100%">
+    <tr>
+        <td width="60%"></td> <!-- empty left side -->
+        <td width="40%" align="right">
+
+            <table class="no-border" width="100%">
+                <tr>
+                    <td align="left"><strong>Total without tax:</strong></td>
+                    <td align="right">{{ total_without_tax|floatformat:2 }}</td>
+                </tr>
+                <tr>
+                    <td align="left"><strong>Total tax payable:</strong></td>
+                    <td align="right">{{ total_tax|floatformat:2 }}</td>
+                </tr>
+                <tr>
+                    <td align="left"><strong>Net price:</strong></td>
+                    <td align="right">{{ net_price|floatformat:2 }}</td>
+                </tr>
+                <tr>
+                    <td align="left"><strong>Rounded net price:</strong></td>
+                    <td align="right">{{ rounded_net_price|floatformat:2 }}</td>
+                </tr>
+                <tr>
+                    <td align="left"><strong>Balance payable:</strong></td>
+                    <td align="right">{{ balance_amount|floatformat:2 }}</td>
+                </tr>
+            </table>
+
+        </td>
+    </tr>
+</table>
+
+<br><br>
+
+<!-- RIGHT SIDE DENOMINATIONS -->
+
+<table width="100%">
+    <tr>
+        <td width="60%"></td>
+        <td width="40%" align="right">
+
+            <h3 style="text-align:right;">Balance Denominations</h3>
+
+            <table class="no-border" width="100%">
+                {% for value, count in denominations.items %}
+                <tr>
+                    <td align="left">{{ value }} :</td>
+                    <td align="right">{{ count }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+
+        </td>
+    </tr>
+</table>
+
+</body>
+</html>

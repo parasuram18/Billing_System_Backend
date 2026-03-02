@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Products</title>
+</head>
+<body>
+
+<h2>Product Management</h2>
+
+<h3>Add Product</h3>
+
+<form id="productForm">
+    <input type="text" id="product_id" placeholder="Product ID"><br>
+    <input type="text" id="name" placeholder="Name"><br>
+    <input type="number" id="available_stocks" placeholder="Stock"><br>
+    <input type="number" step="0.01" id="price" placeholder="Price"><br>
+    <input type="number" step="0.01" id="tax_percentage" placeholder="Tax %"><br>
+    <button type="submit">Save</button>
+</form>
+
+<hr>
+
+<h3>Product List</h3>
+<table border="1" id="productTable">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Stock</th>
+            <th>Price</th>
+            <th>Tax</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+
+<script>
+
+function loadProducts() {
+    fetch("http://127.0.0.1:8000/api/products/")
+        .then(response => response.json())
+        .then(data => {
+            let table = document.querySelector("#productTable tbody");
+            table.innerHTML = "";
+            data.forEach(product => {
+                table.innerHTML += `
+                    <tr>
+                        <td>${product.product_id}</td>
+                        <td>${product.name}</td>
+                        <td>${product.available_stocks}</td>
+                        <td>${product.price}</td>
+                        <td>${product.tax_percentage}</td>
+                        <td>
+                            <button onclick="deleteProduct(${product.id})">Delete</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        });
+}
+
+function deleteProduct(id) {
+    fetch(`http://127.0.0.1:8000/api/products/${id}/`, {
+        method: "DELETE",
+    }).then(() => loadProducts());
+}
+
+document.getElementById("productForm").addEventListener("submit", function(e) {
+    e.preventDefault();
+
+    fetch("http://127.0.0.1:8000/api/products/", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            product_id: document.getElementById("product_id").value,
+            name: document.getElementById("name").value,
+            available_stocks: document.getElementById("available_stocks").value,
+            price: document.getElementById("price").value,
+            tax_percentage: document.getElementById("tax_percentage").value
+        })
+    }).then(() => {
+        loadProducts();
+        document.getElementById("productForm").reset();
+    });
+});
+
+loadProducts();
+
+</script>
+
+</body>
+</html>
