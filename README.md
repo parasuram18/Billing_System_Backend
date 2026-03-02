@@ -24,7 +24,8 @@ cd <project-folder>
 
 # create a virtual environment
 
- - python -m venv venv
+   # use PYTHON VERSION 3.10
+    - py -3.10 -m venv env
  - Windows: venv\Scripts\activate
 
  - pip install -r requirements.txt
