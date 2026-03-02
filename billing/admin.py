@@ -1,6 +1,12 @@
 from django.contrib import admin
-from .models import ProductDetails, Denomination
+from .models import ProductDetails, Denomination, CustomUser
 
+
+@admin.register(CustomUser)
+class CustomUserAdmin(admin.ModelAdmin):
+    list_display = (
+        "email",
+    )
 
 @admin.register(Denomination)
 class DenominationAdmin(admin.ModelAdmin):
